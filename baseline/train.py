@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from utils import label_accuracy_score, add_hist
+from pathlib import Path
 
 from dataset import CustomDataLoader, category_names
 
@@ -93,14 +94,14 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, sav
 
         # validation 주기에 따른 loss 출력 및 best model 저장
         if (epoch + 1) % val_every == 0:
-            avrg_loss = validation(epoch + 1, model, val_loader, criterion, device)
+            avrg_loss = validation(epoch + 1, model, val_loader, criterion, device, saved_dir)
             if avrg_loss < best_loss:
                 print(f"Best performance at epoch: {epoch + 1}")
                 print(f"Save model in {saved_dir}")
                 best_loss = avrg_loss
                 save_model(model, saved_dir)
 
-def validation(epoch, model, val_loader, criterion, device):
+def validation(epoch, model, val_loader, criterion, device, saved_dir):
     print(f'Start validation #{epoch}')
     model.eval()
 
@@ -110,7 +111,7 @@ def validation(epoch, model, val_loader, criterion, device):
         cnt = 0
         
         hist = np.zeros((n_class, n_class))
-        for step, (images, masks, _) in enumerate(val_loader):
+        for step, (images, masks, _) in enumerate(tqdm(val_loader)):
             
             images = torch.stack(images)       
             masks = torch.stack(masks).long()  
@@ -137,9 +138,32 @@ def validation(epoch, model, val_loader, criterion, device):
         print(f'Validation #{epoch}  Average Loss: {round(avrg_loss.item(), 4)}, Accuracy : {round(acc, 4)}, \
                 mIoU: {round(mIoU, 4)}')
         print(f'IoU by class : {IoU_by_class}')
+
+        f = open(f'{saved_dir}/valid.txt', 'a')
+        f.write(f'Validation #{epoch}  Average Loss: {round(avrg_loss.item(), 4)}, Accuracy : {round(acc, 4)}, \
+                mIoU: {round(mIoU, 4)}\n')
+        f.write(f'{IoU_by_class}\n')
+        f.close()
         
     return avrg_loss
 
+def increment_path(path):   
+    n = 0
+    while True:
+        path_ = Path(f"{path}{n}")
+        if not path_.exists():
+            break
+        elif path_.exists():
+            n += 1
+
+    path_ = str(path_)
+    path = ''
+    for p in path_.split('/'):
+        path += f'{p}/'
+        if not Path(path).exists():
+            os.mkdir(path)
+
+    return path_
 
 def main(args) :
 
@@ -185,8 +209,10 @@ def main(args) :
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    saved_dir = os.path.join(args.saved_dir, 'exp')
+    saved_dir = increment_path(saved_dir)
 
-    train(args.epochs, model, train_loader, val_loader, criterion, optimizer, args.saved_dir, args.val_interval, device)
+    train(args.epochs, model, train_loader, val_loader, criterion, optimizer, saved_dir, args.val_interval, device)
 
     
 if __name__ == "__main__" :
@@ -197,10 +223,10 @@ if __name__ == "__main__" :
     parser.add_argument('--seed', type=int, default=2021, help='set random seed')
     parser.add_argument('--noval', action='store_true', help='only train')
 
-    parser.add_argument('--train-path', type=str, default='../input/data/train.json', help='train json path')
-    parser.add_argument('--valid-path', type=str, default='../input/data/val.json', help='valid json path')
+    parser.add_argument('--train-path', type=str, default='/opt/ml/segmentation/input/data/train.json', help='train json path')
+    parser.add_argument('--valid-path', type=str, default='/opt/ml/segmentation/input/data/val.json', help='valid json path')
 
-    parser.add_argument('--saved_dir', type=str, default='/saved', help='model save path')
+    parser.add_argument('--saved_dir', type=str, default='./saved', help='model save path')
     parser.add_argument('--val_interval', type=int, default=1, help='set valid interval')
 
     args = parser.parse_args()

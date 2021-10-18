@@ -29,7 +29,8 @@ class CustomDataLoader(Dataset):
         self.mode = mode
         self.transform = transform
         self.coco = COCO(data_dir)
-        self.dataset_path = '../input/data'
+        self.dataset_path = '/opt/ml/segmentation/input/data'
+
     def __getitem__(self, index: int):
         # dataset이 index되어 list처럼 동작
         image_id = self.coco.getImgIds(imgIds=index)
