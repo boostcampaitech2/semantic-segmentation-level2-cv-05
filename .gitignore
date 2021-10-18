@@ -1,0 +1,12 @@
+*.jpg
+*.jpeg
+__pycache__/*
+*.swp
+*.pyc
+train/*
+eval/*
+.DS_Store
+.ipynb_checkpoints
+saved/*
+*.csv
+*.swp
