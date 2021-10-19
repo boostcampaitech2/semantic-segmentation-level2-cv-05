@@ -1,0 +1,27 @@
+from albumentations import Compose, HorizontalFlip, Normalize
+from albumentations.pytorch import ToTensorV2
+
+
+class BaseAugmentation:
+    def __init__(self, train=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+        self.mean = mean
+        self.std = std
+        if train:
+            self.transform = Compose([
+                                    HorizontalFlip(p=0.5),
+                                    Normalize(self.mean,
+                                        self.std),
+                                    ToTensorV2()
+                                    ])
+        else:
+            self.transform = Compose([
+                                    Normalize(self.mean,
+                                        self.std),
+                                    ToTensorV2()
+                                    ])
+
+    def __call__(self, image, mask=None):
+        if mask is not None:
+            return self.transform(image=image, mask=mask)
+        else:
+            return self.transform(image=image)

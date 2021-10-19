@@ -1,65 +1,45 @@
 import os
 import random
 import time
-import json
-import warnings 
-warnings.filterwarnings('ignore')
+import collections
+import wandb
 
 import numpy as np
-import pandas as pd
 from tqdm import tqdm
-from utils import label_accuracy_score, add_hist
+from utils import label_accuracy_score, add_hist, label_to_color_image, increment_path, set_seed, save_model, load_weight
 from pathlib import Path
-
-from dataset import CustomDataLoader, category_names
-
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import models
 
+
 import argparse
+from parse_config import ConfigParser
+from datasets import  category_names
+import datasets as module_dataset
+import models as module_model
+import transforms as module_transform
+import losses as module_loss
 
-# print('pytorch version: {}'.format(torch.__version__))
-# print('GPU 사용 가능 여부: {}'.format(torch.cuda.is_available()))
-
-# print(torch.cuda.get_device_name(0))
-# print(torch.cuda.device_count())
-
-
-def set_seed(seed) :
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed) # if use multi-GPU
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    np.random.seed(seed)
-    random.seed(seed)
 
 # collate_fn needs for batch
 def collate_fn(batch):
     return tuple(zip(*batch))
 
-def save_model(model, saved_dir, file_name='fcn_resnet50_best_model(pretrained).pt'):
 
-    if not os.path.isdir(saved_dir):                                                           
-        os.mkdir(saved_dir)
-    check_point = {'net': model.state_dict()}
-    output_path = os.path.join(saved_dir, file_name)
-    torch.save(model, output_path)
-
-def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, saved_dir, val_every, device):
+def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, lr_scheduler, saved_dir, val_every, device):
     print(f'Start training..')
+    wandb.watch(model)
+
     n_class = 11
     best_loss = 9999999
-    # GPU 사용 가능 여부에 따라 device 정보 저장
+    best_mIoU = 0
 
     for epoch in range(num_epochs):
         model.train()
-
+        wandb.log({"learning_rate": optimizer.param_groups[0]['lr'], "epoch":epoch+1})
         hist = np.zeros((n_class, n_class))
         for step, (images, masks, _) in enumerate(train_loader):
             images = torch.stack(images)       
@@ -68,11 +48,8 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, sav
             # gpu 연산을 위해 device 할당
             images, masks = images.to(device), masks.to(device)
             
-            # device 할당
-            model = model.to(device)
-            
             # inference
-            outputs = model(images)['out']
+            outputs = model(images)
             
             # loss 계산 (cross entropy loss)
             loss = criterion(outputs, masks)
@@ -82,36 +59,43 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, sav
             
             outputs = torch.argmax(outputs, dim=1).detach().cpu().numpy()
             masks = masks.detach().cpu().numpy()
+
             
             hist = add_hist(hist, masks, outputs, n_class=n_class)
             acc, acc_cls, mIoU, fwavacc, IoU = label_accuracy_score(hist)
             
             # step 주기에 따른 loss 출력
             if (step + 1) % 25 == 0:
+                wandb.log({"train/loss": loss.item(), "train/mIoU":mIoU, "epoch":epoch+1}, step=epoch*len(train_loader)+step)
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{step+1}/{len(train_loader)}], \
                         Loss: {round(loss.item(),4)}, mIoU: {round(mIoU,4)}, \
                         Time: {time.strftime("%H:%M:%S")}')
 
         # validation 주기에 따른 loss 출력 및 best model 저장
         if (epoch + 1) % val_every == 0:
-            avrg_loss = validation(epoch + 1, model, val_loader, criterion, device, saved_dir)
+            avrg_loss, mIoU = validation(epoch + 1, model, val_loader, criterion, device, saved_dir)
             if avrg_loss < best_loss:
                 print(f"Best performance at epoch: {epoch + 1}")
                 print(f"Save model in {saved_dir}")
                 best_loss = avrg_loss
-                save_model(model, saved_dir)
-
+                save_model(model, optimizer, lr_scheduler, saved_dir, file_name='best_loss.pt')
+            if mIoU > best_mIoU:
+                print(f"Best mIoU performance at epoch: {epoch + 1}")
+                print(f"Save model in {saved_dir}")
+                best_mIoU = mIoU
+                save_model(model, optimizer, lr_scheduler, saved_dir, file_name='best_mIoU.pt')
+        lr_scheduler.step()
 def validation(epoch, model, val_loader, criterion, device, saved_dir):
     print(f'Start validation #{epoch}')
     model.eval()
-
+    
     with torch.no_grad():
         n_class = 11
         total_loss = 0
         cnt = 0
         
         hist = np.zeros((n_class, n_class))
-        for step, (images, masks, _) in enumerate(tqdm(val_loader)):
+        for step, (images, masks, infos) in enumerate(tqdm(val_loader)):
             
             images = torch.stack(images)       
             masks = torch.stack(masks).long()  
@@ -121,9 +105,9 @@ def validation(epoch, model, val_loader, criterion, device, saved_dir):
             # device 할당
             model = model.to(device)
             
-            outputs = model(images)['out']
+            outputs = model(images)
             loss = criterion(outputs, masks)
-            total_loss += loss
+            total_loss += loss.item()
             cnt += 1
             
             outputs = torch.argmax(outputs, dim=1).detach().cpu().numpy()
@@ -135,100 +119,97 @@ def validation(epoch, model, val_loader, criterion, device, saved_dir):
         IoU_by_class = [{classes : round(IoU,4)} for IoU, classes in zip(IoU , category_names)]
         
         avrg_loss = total_loss / cnt
-        print(f'Validation #{epoch}  Average Loss: {round(avrg_loss.item(), 4)}, Accuracy : {round(acc, 4)}, \
+        print(f'Validation #{epoch}  Average Loss: {round(avrg_loss, 4)}, Accuracy : {round(acc, 4)}, \
                 mIoU: {round(mIoU, 4)}')
         print(f'IoU by class : {IoU_by_class}')
 
         f = open(f'{saved_dir}/valid.txt', 'a')
-        f.write(f'Validation #{epoch}  Average Loss: {round(avrg_loss.item(), 4)}, Accuracy : {round(acc, 4)}, \
+        f.write(f'Validation #{epoch}  Average Loss: {round(avrg_loss, 4)}, Accuracy : {round(acc, 4)}, \
                 mIoU: {round(mIoU, 4)}\n')
         f.write(f'{IoU_by_class}\n')
         f.close()
-        
-    return avrg_loss
+        valid_log = {"valid/loss": avrg_loss, "valid/mIoU":mIoU, "epoch":epoch+1}
+        for iou, classes in zip(IoU , category_names):
+            valid_log["valid/IoU/"+classes] = iou
+        wandb.log(valid_log)
 
-def increment_path(path):   
-    n = 0
-    while True:
-        path_ = Path(f"{path}{n}")
-        if not path_.exists():
-            break
-        elif path_.exists():
-            n += 1
 
-    path_ = str(path_)
-    path = ''
-    for p in path_.split('/'):
-        path += f'{p}/'
-        if not Path(path).exists():
-            os.mkdir(path)
+    return avrg_loss, mIoU
 
-    return path_
 
-def main(args) :
+def main(config) :
 
-    set_seed(args.seed)
+    set_seed(config['seed'])
 
-    train_transform = A.Compose([
-                            ToTensorV2()
-                                ])
+    train_dataset = config.init_obj('train_dataset', module_dataset)
+    valid_dataset = config.init_obj('valid_dataset', module_dataset)
 
-    val_transform = A.Compose([
-                            ToTensorV2()
-                            ])
+    train_transform = config.init_obj('train_transform', module_transform)
+    valid_transform = config.init_obj('valid_transform', module_transform)
 
-    train_dataset = CustomDataLoader(data_dir=args.train_path, mode='train', transform=train_transform)
-    if not args.noval :
-        val_dataset = CustomDataLoader(data_dir=args.valid_path, mode='val', transform=val_transform)
+    train_dataset.set_transform(train_transform)
+    valid_dataset.set_transform(valid_transform)
 
     # DataLoader
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, 
-                                            batch_size=args.batch_size,
+                                            batch_size=config["batch_size"],
                                             shuffle=True,
                                             num_workers=4,
                                             collate_fn=collate_fn)
 
-    val_loader = torch.utils.data.DataLoader(dataset=val_dataset, 
-                                            batch_size=args.batch_size,
+    val_loader = torch.utils.data.DataLoader(dataset=valid_dataset, 
+                                            batch_size=config["batch_size"],
                                             shuffle=False,
                                             num_workers=4,
                                             collate_fn=collate_fn)
 
+    # Set model
+    model = config.init_obj('model', module_model)
 
+    # Set Loss function
+    criterion_dict = config["criterion"]
+    criterion = getattr(module_loss, criterion_dict["type"])(**criterion_dict["args"])
 
-    model = models.segmentation.fcn_resnet50(pretrained=True)
-
-    # output class를 data set에 맞도록 수정
-    model.classifier[4] = nn.Conv2d(512, 11, kernel_size=1)
-
-    # Loss function 정의
-    criterion = nn.CrossEntropyLoss()
-
-    # Optimizer 정의
-    optimizer = torch.optim.Adam(params = model.parameters(), lr = args.lr, weight_decay=1e-6)
-
+    # Set Optimizer & Scheduler
+    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+    optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
+    lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
+    
+    # Set device
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
 
-    saved_dir = os.path.join(args.saved_dir, 'exp')
-    saved_dir = increment_path(saved_dir)
+    if 'ckpt' in config.config.keys():
+        load_weight(config['ckpt'], model, optimizer, lr_scheduler)
+        print("success loading ckpt")
 
-    train(args.epochs, model, train_loader, val_loader, criterion, optimizer, saved_dir, args.val_interval, device)
+    saved_dir = config.save_dir
+    NAME = config['name']
+
+    # Set wandb
+    wandb.init(project='Trash_Segmentation', entity='friends', config=config.config, name = NAME)
+    wandb.define_metric("epoch")
+    wandb.define_metric("learning_rate", step_metric="epoch")
+    wandb.define_metric("valid/*", step_metric="epoch")
+    wandb.define_metric("valid/mIoU", summary="max")
+    
+    train(config['epochs'], model, train_loader, val_loader, criterion, optimizer, lr_scheduler, saved_dir, config['val_interval'], device)
 
     
 if __name__ == "__main__" :
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--batch-size', type=int, default=16, help='set train batch size')
-    parser.add_argument('--epochs', type=int, default=20, help='set train epochs')
-    parser.add_argument('--lr', type=float, default=1e-4, help='set learing rate')
-    parser.add_argument('--seed', type=int, default=2021, help='set random seed')
-    parser.add_argument('--noval', action='store_true', help='only train')
+    args = argparse.ArgumentParser()
+    args.add_argument('-c', '--config', default=None, type=str,
+                      help='config file path (default: None)')
+    args.add_argument('-r', '--resume', default=None, type=str,
+                      help='path to latest checkpoint (default: None)')
+    args.add_argument('--ckpt', default=None, type=str,
+                      help='path to latest checkpoint (default: None)')
 
-    parser.add_argument('--train-path', type=str, default='/opt/ml/segmentation/input/data/train.json', help='train json path')
-    parser.add_argument('--valid-path', type=str, default='/opt/ml/segmentation/input/data/val.json', help='valid json path')
-
-    parser.add_argument('--saved_dir', type=str, default='./saved', help='model save path')
-    parser.add_argument('--val_interval', type=int, default=1, help='set valid interval')
-
-    args = parser.parse_args()
-    print(args)
-    main(args)
+    # custom cli options to modify configuration from default values given in json file.
+    CustomArgs = collections.namedtuple('CustomArgs', 'flags type target')
+    options = [
+        CustomArgs(['--lr', '--learning_rate'], type=float, target='optimizer;args;lr'),
+        CustomArgs(['--bs', '--batch_size'], type=int, target='data_loader;args;batch_size')
+    ]
+    config = ConfigParser.from_args(args, options)
+    main(config)

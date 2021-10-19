@@ -8,5 +8,7 @@ eval/*
 .DS_Store
 .ipynb_checkpoints
 saved/*
+baseline/saved/*
+baseline/wandb/*
 *.csv
 *.swp

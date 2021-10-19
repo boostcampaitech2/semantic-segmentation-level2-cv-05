@@ -7,11 +7,6 @@ import numpy as np
 
 
 from pycocotools.coco import COCO
-import torchvision
-import torchvision.transforms as transforms
-
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 category_names = ['Backgroud', 'General trash', 'Paper', 'Paper pack', 'Metal',
                   'Glass', 'Plastic', 'Styrofoam', 'Plastic bag', 'Battery', 'Clothing']
@@ -22,13 +17,15 @@ def get_classname(classID, cats):
             return cats[i]['name']
     return "None"
 
-class CustomDataLoader(Dataset):
+class CustomDataset(Dataset):
+
+    
     """COCO format"""
-    def __init__(self, data_dir, mode = 'train', transform = None):
+    def __init__(self, json_path, mode = 'train', transform = None):
         super().__init__()
         self.mode = mode
         self.transform = transform
-        self.coco = COCO(data_dir)
+        self.coco = COCO(json_path)
         self.dataset_path = '/opt/ml/segmentation/input/data'
 
     def __getitem__(self, index: int):
@@ -39,7 +36,7 @@ class CustomDataLoader(Dataset):
         # cv2 를 활용하여 image 불러오기
         images = cv2.imread(os.path.join(self.dataset_path, image_infos['file_name']))
         images = cv2.cvtColor(images, cv2.COLOR_BGR2RGB).astype(np.float32)
-        images /= 255.0
+        # images /= 255.0
         
         if (self.mode in ('train', 'val')):
             ann_ids = self.coco.getAnnIds(imgIds=image_infos['id'])
@@ -78,3 +75,6 @@ class CustomDataLoader(Dataset):
     def __len__(self) -> int:
         # 전체 dataset의 size를 return
         return len(self.coco.getImgIds())
+
+    def set_transform(self, transform):
+        self.transform = transform
