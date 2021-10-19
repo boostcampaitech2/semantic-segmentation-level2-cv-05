@@ -12,3 +12,4 @@ baseline/saved/*
 baseline/wandb/*
 *.csv
 *.swp
+*.json

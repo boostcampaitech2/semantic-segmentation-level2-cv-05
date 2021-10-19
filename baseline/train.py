@@ -38,6 +38,7 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, lr_
     best_mIoU = 0
 
     for epoch in range(num_epochs):
+        print()
         model.train()
         wandb.log({"learning_rate": optimizer.param_groups[0]['lr'], "epoch":epoch+1})
         hist = np.zeros((n_class, n_class))
