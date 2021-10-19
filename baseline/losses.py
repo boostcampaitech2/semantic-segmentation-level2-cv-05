@@ -3,6 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 
+# https://github.com/qubvel/segmentation_models.pytorch/tree/35d79c1aa5fb26ba0b2c1ec67084c66d43687220
+# mode == 'multiclass' 
+from segmentation_models_pytorch.losses import (JaccardLoss,DiceLoss,FocalLoss,LovaszLoss,
+                                                SoftBCEWithLogitsLoss,SoftCrossEntropyLoss,TverskyLoss)
+
 class DiceLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
         super(DiceLoss, self).__init__()
