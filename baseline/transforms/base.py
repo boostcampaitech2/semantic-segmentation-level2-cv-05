@@ -1,5 +1,6 @@
 from albumentations import Compose, HorizontalFlip, Normalize
 from albumentations.pytorch import ToTensorV2
+import albumentations as albu
 
 
 class BaseAugmentation:
@@ -7,8 +8,12 @@ class BaseAugmentation:
         self.mean = mean
         self.std = std
         if train:
-            self.transform = Compose([
+           self.transform = Compose([
                                     HorizontalFlip(p=0.5),
+                                    albu.ShiftScaleRotate(shift_limit=0.0625, 
+                                                    scale_limit=0.2, 
+                                                    rotate_limit=15),
+                                    albu.RandomBrightnessContrast(p=0.5),
                                     Normalize(self.mean,
                                         self.std),
                                     ToTensorV2()
