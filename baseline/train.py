@@ -129,7 +129,7 @@ def validation(epoch, model, val_loader, criterion, device, saved_dir):
                 mIoU: {round(mIoU, 4)}\n')
         f.write(f'{IoU_by_class}\n')
         f.close()
-        valid_log = {"val/loss": avrg_loss, "val/mIoU":mIoU, "epoch":epoch+1}
+        valid_log = {"val/loss": avrg_loss, "val/mIoU":mIoU, "epoch":epoch}
         for iou, classes in zip(IoU , category_names):
             valid_log["val/IoU."+classes] = iou
         wandb.log(valid_log)
