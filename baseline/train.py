@@ -86,8 +86,6 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, lr_
                 best_mIoU = mIoU
                 save_model(model, optimizer, lr_scheduler, saved_dir, file_name='best_mIoU.pt')
         lr_scheduler.step()
-
-
 def validation(epoch, model, val_loader, criterion, device, saved_dir):
     print(f'Start validation #{epoch}')
     model.eval()
@@ -131,7 +129,7 @@ def validation(epoch, model, val_loader, criterion, device, saved_dir):
                 mIoU: {round(mIoU, 4)}\n')
         f.write(f'{IoU_by_class}\n')
         f.close()
-        valid_log = {"valid/loss": avrg_loss, "valid/mIoU":mIoU, "epoch":epoch}
+        valid_log = {"val/loss": avrg_loss, "val/mIoU":mIoU, "epoch":epoch+1}
         for iou, classes in zip(IoU , category_names):
             valid_log["val/IoU."+classes] = iou
         wandb.log(valid_log)
@@ -193,8 +191,8 @@ def main(config) :
     wandb.init(project='Trash_Segmentation', entity='friends', config=config.config, name = NAME)
     wandb.define_metric("epoch")
     wandb.define_metric("learning_rate", step_metric="epoch")
-    wandb.define_metric("valid/*", step_metric="epoch")
-    wandb.define_metric("valid/mIoU", summary="max")
+    wandb.define_metric("val/*", step_metric="epoch")
+    wandb.define_metric("val/mIoU", summary="max")
     
     train(config['epochs'], model, train_loader, val_loader, criterion, optimizer, lr_scheduler, saved_dir, config['val_interval'], device)
 
