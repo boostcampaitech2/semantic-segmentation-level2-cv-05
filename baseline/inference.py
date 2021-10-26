@@ -70,8 +70,8 @@ def main(config):
                                             collate_fn=collate_fn)
     print(test_loader)
 
-    # sample_submisson.csv 열기
-    submission = pd.read_csv('./submission/sample_submission.csv', index_col=None)
+    # submission format
+    submission = pd.DataFrame({"image_id":[],"PredictionString":[]})
 
     # test set에 대한 prediction
     file_names, preds = test(model, test_loader, device)
