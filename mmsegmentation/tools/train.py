@@ -56,6 +56,7 @@ def parse_args():
         default='none',
         help='job launcher')
     parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--beit',action='store_true',help='use beit')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -159,6 +160,9 @@ def main():
         test_cfg=cfg.get('test_cfg'))
     model.init_weights()
 
+    # Beit init
+    if args.beit :
+        model.backbone.init_weights(cfg.pretrained)
     # SyncBN is not support for DP
     if not distributed:
         warnings.warn(
