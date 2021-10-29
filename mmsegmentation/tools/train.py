@@ -100,6 +100,26 @@ def main():
         _, world_size = get_dist_info()
         cfg.gpu_ids = range(world_size)
 
+    # set Wandb
+    PROJECT = "Trash_Segmentation"
+
+    SAVE_NAME = cfg['NAME']
+    cfg.log_config = dict(interval = 50,
+                            hooks = [dict(type = 'TextLoggerHook'), 
+                                dict(type = 'WandbLoggerHook',
+                                        init_kwargs = dict(project = PROJECT,
+                                                            config = dict(batch_size = cfg.data.samples_per_gpu,
+                                                                        lr           = cfg.optimizer.lr,
+                                                                        epochs       = cfg.runner.max_epochs,
+                                                                        model        = cfg.model.type,
+                                                                        save_name    = SAVE_NAME,
+                                                                        # type = args.wandb_type
+                                                                        ),
+                                                            name = SAVE_NAME   
+                                                            )
+                                    )])
+
+
     # create work_dir
     mmcv.mkdir_or_exist(osp.abspath(cfg.work_dir))
     # dump config
