@@ -4,6 +4,7 @@ import warnings
 
 import numpy as np
 import torch
+import os
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmcv.runner import build_optimizer, build_runner
 
@@ -22,9 +23,11 @@ def set_random_seed(seed, deterministic=False):
             to True and `torch.backends.cudnn.benchmark` to False.
             Default: False.
     """
+    os.environ['PYTHONHASHSEED'] = str(seed)
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     if deterministic:
         torch.backends.cudnn.deterministic = True
