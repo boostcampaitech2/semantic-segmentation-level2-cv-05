@@ -88,9 +88,9 @@ Paper pack, Metal, Glass, Battery, Clothing 총 5개의 category를 적용시켰
 
 
 ## Contributor
-- 강수빈([github](https://github.com/suuuuuuuubin)) : 
-- 김인재([github](https://github.com/K-nowing)) : 
-- 원상혁([github](https://github.com/wonsgong)) : 
-- 이경민([github](https://github.com/lkm2835)) : 
-- 최민서([github](https://github.com/minseo0214)) : 
+- 강수빈([github](https://github.com/suuuuuuuubin)) : dmnet, segformer 실험, loss 실험
+- 김인재([github](https://github.com/K-nowing)) : Copy Paste, Augmentation 실험, Data correction, Baseline 구축
+- 원상혁([github](https://github.com/wonsgong)) : Upernet-Beit 실험, 앙상블
+- 이경민([github](https://github.com/lkm2835)) : Augmentation - GridMask, Cutout, Object Cutout / Model -  upernet-swin, segformer-swin 
+- 최민서([github](https://github.com/minseo0214)) : Danet, HRNet, Segformer swin 모델 실험
 
