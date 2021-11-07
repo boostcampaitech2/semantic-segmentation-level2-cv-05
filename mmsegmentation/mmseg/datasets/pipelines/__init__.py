@@ -6,7 +6,7 @@ from .loading import LoadAnnotations, LoadImageFromFile
 from .test_time_aug import MultiScaleFlipAug
 from .transforms import (Albu, CLAHE, AdjustGamma, Normalize, Pad,
                          PhotoMetricDistortion, RandomCrop, RandomFlip,
-                         RandomRotate, Rerange, Resize, RGB2Gray, SegRescale)
+                         RandomRotate, Rerange, Resize, RGB2Gray, SegRescale, GridMask)
 
 from .auto_augment import (AutoAugment, BrightnessTransform, ColorTransform,
                            ContrastTransform, EqualizeTransform, Rotate, Shear,
@@ -23,5 +23,5 @@ __all__ = [
     'AdjustGamma', 'CLAHE', 'Rerange', 'RGB2Gray', 'Albu',
     'AutoAugment', 'BrightnessTransform', 'ColorTransform',
     'ContrastTransform', 'EqualizeTransform', 'Rotate', 'Shear',
-    'Translate', 'CopyPaste', 'MultiCopyPaste'
+    'Translate', 'CopyPaste', 'MultiCopyPaste', 'GridMask'
 ]

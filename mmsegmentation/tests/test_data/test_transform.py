@@ -497,3 +497,65 @@ def test_seg_rescale():
     rescale_module = build_from_cfg(transform, PIPELINES)
     rescale_results = rescale_module(results.copy())
     assert rescale_results['gt_semantic_seg'].shape == (h, w)
+
+
+def test_gridmask():
+    # test cutout_shape and cutout_ratio
+    with pytest.raises(AssertionError):
+        transform = dict(type='GridMask', cutout_shape=8)
+        build_from_cfg(transform, PIPELINES)
+    with pytest.raises(AssertionError):
+        transform = dict(type='GridMask', cutout_ratio=0.2)
+        build_from_cfg(transform, PIPELINES)
+    # either of cutout_shape and cutout_ratio should be given
+    with pytest.raises(AssertionError):
+        transform = dict(type='GridMask')
+        build_from_cfg(transform, PIPELINES)
+    with pytest.raises(AssertionError):
+        transform = dict(
+            type='GridMask',
+            cutout_shape=(2, 2),
+            cutout_ratio=(0.4, 0.4))
+        build_from_cfg(transform, PIPELINES)
+
+    results = dict()
+    img = mmcv.imread(
+        osp.join(osp.dirname(__file__), '/opt/ml/segmentation/input/data/mmseg/images/train/0006.jpg'), 'color')
+    seg = np.array(
+        Image.open(osp.join(osp.dirname(__file__), '/opt/ml/segmentation/input/data/mmseg/annotations/train/0006.png')))
+
+    results['img'] = img
+    results['gt_semantic_seg'] = seg
+    results['seg_fields'] = ['gt_semantic_seg']
+    results['img_shape'] = img.shape
+    results['ori_shape'] = img.shape
+    results['pad_shape'] = img.shape
+    results['img_fields'] = ['img']
+
+    transform = dict(type='GridMask', cutout_shape=(10, 10))
+    cutout_module = build_from_cfg(transform, PIPELINES)
+    cutout_result = cutout_module(copy.deepcopy(results))
+    #assert cutout_result['img'].sum() < img.sum()
+
+    transform = dict(type='GridMask', cutout_ratio=(0.8, 0.8))
+    cutout_module = build_from_cfg(transform, PIPELINES)
+    cutout_result = cutout_module(copy.deepcopy(results))
+    #assert cutout_result['img'].sum() < img.sum()
+
+    transform = dict(
+        type='GridMask',
+        cutout_shape=[(10, 10), (15, 15)],
+        fill_in=(255, 255, 255))
+    cutout_module = build_from_cfg(transform, PIPELINES)
+    cutout_result = cutout_module(copy.deepcopy(results))
+    #assert cutout_result['img'].sum() > img.sum()
+
+    transform = dict(
+        type='GridMask',
+        n_windows=4,
+        cutout_ratio=[(0.1, 0.1), (0.2,0.2), (0.3, 0.3), (0.4, 0.4), (0.5, 0.5)],
+        fill_in=(255, 255, 255))
+    cutout_module = build_from_cfg(transform, PIPELINES)
+    cutout_result = cutout_module(copy.deepcopy(results))
+    #assert cutout_result['img'].sum() > img.sum()
+    return cutout_result

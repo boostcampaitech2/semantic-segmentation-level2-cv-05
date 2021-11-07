@@ -1151,3 +1151,62 @@ class PhotoMetricDistortion(object):
                      f'{self.saturation_upper}), '
                      f'hue_delta={self.hue_delta})')
         return repr_str
+
+
+@PIPELINES.register_module()
+class GridMask:
+    def __init__(self,
+                 n_windows=6,
+                 cutout_shape=None,
+                 cutout_ratio=None,
+                 fill_in=(0, 0, 0),
+                 prob=1
+                 ):
+
+        assert (cutout_shape is None) ^ (cutout_ratio is None), \
+            'Either cutout_shape or cutout_ratio should be specified.'
+        assert (isinstance(cutout_shape, (list, tuple))
+                or isinstance(cutout_ratio, (list, tuple)))
+        self.prob = prob
+        self.n_windows = n_windows
+        self.fill_in = fill_in
+        self.with_ratio = cutout_ratio is not None
+        self.candidates = cutout_ratio if self.with_ratio else cutout_shape
+        if not isinstance(self.candidates, list):
+            self.candidates = [self.candidates]
+
+    def __call__(self, results):
+        """Call function to drop some regions of image."""
+        if np.random.rand() > self.prob:
+            return results
+        h, w, c = results['img'].shape
+        self.n_windows = np.random.randint(1, self.n_windows)
+        index = np.random.randint(0, len(self.candidates))
+
+        if not self.with_ratio:
+            cutout_w, cutout_h = self.candidates[index]
+        else:
+            cutout_w = int(self.candidates[index][0] * (w / self.n_windows))
+            cutout_h = int(self.candidates[index][1] * (h / self.n_windows))
+
+        random_offset_x = np.random.randint(0, w / self.n_windows - cutout_w)
+        random_offset_y = np.random.randint(0, h / self.n_windows - cutout_h)
+
+        for x in range(0, w, int(w/self.n_windows)):
+            for y in range(0, h, int(h/self.n_windows)):
+                x1 = x + random_offset_x
+                y1 = y + random_offset_y
+
+                x2 = np.clip(x1 + cutout_w, 0, w)
+                y2 = np.clip(y1 + cutout_h, 0, h)
+                results['img'][y1:y2, x1:x2, :] = self.fill_in
+
+        return results
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__
+        repr_str += f'(n_windows={self.n_windows}, '
+        repr_str += (f'cutout_ratio={self.candidates}, ' if self.with_ratio
+                     else f'cutout_shape={self.candidates}, ')
+        repr_str += f'fill_in={self.fill_in})'
+        return repr_str
