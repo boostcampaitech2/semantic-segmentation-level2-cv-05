@@ -44,7 +44,6 @@ python tools/train.py configs/...
 | Upernet - BeiT (All data)            | Copy Paste, Grid Mask                |[config](https://github.com/boostcampaitech2/semantic-segmentation-level2-cv-05/blob/main/mmsegmentation/configs/upernet/upernet_beit_large_all.py)      
 | segformer - swin large               | Copy Paste, Grid Mask                |[config](https://github.com/boostcampaitech2/semantic-segmentation-level2-cv-05/blob/main/mmsegmentation/configs/segformer/segformer_swin_large.py)|
 | segformer - swin large (All data)    | Copy Paste, Grid Mask, Heavy aug, Mixed precision|[config](https://github.com/boostcampaitech2/semantic-segmentation-level2-cv-05/blob/main/mmsegmentation/configs/segformer/segformer_swin_large_mixed_aug_all.py)|
-                         |
 
 
 
@@ -69,7 +68,7 @@ python ensemble.py
 ## Detail
 ---
 ### Model
-- <a href = 'https://github.com/open-mmlab/mmdetection'>mmdetection</a>를 기반으로 실험을 진행하였다.
+- <a href = 'https://github.com/open-mmlab/mmsegmentation'>mmsegmentation</a>를 기반으로 실험을 진행하였다.
 - 효율적으로 ensemble을 하기 위해서 다양한 model을 사용하려고 노력하였다.
 
 
