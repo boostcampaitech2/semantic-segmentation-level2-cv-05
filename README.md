@@ -73,7 +73,7 @@ python ensemble.py
 ---
 ### Model
 - <a href = 'https://github.com/open-mmlab/mmsegmentation'>mmsegmentation</a>를 기반으로 실험을 진행하였다.
-- 효율적으로 ensemble을 하기 위해서 다양한 model을 사용하려고 노력하였다.
+- 최종 모델로 Upernet-BeiT와 Segformer-swin을 사용하였다.
 
 
 
