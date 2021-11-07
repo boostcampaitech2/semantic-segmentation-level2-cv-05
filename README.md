@@ -22,7 +22,7 @@
 
 
 ### Result
-- Public mIoU score : 0.780 -> Private mAP50 score: 0.766
+- Public mIoU score : 0.780 -> Private mIoU score: 0.766
 
 
 ## Getting Started
@@ -51,6 +51,7 @@ python tools/train.py configs/...
 ### Inference
 ```bash
 cd mmsegmentation
+python inference.py
 python ensemble.py
 ```
 
@@ -59,8 +60,9 @@ python ensemble.py
 ## Code Structure
 ```
 ├── mmsegmentation                 # code from mmsegmentation
-│   ├── tools/train.py             # to train 
-│   └── ensemble.py                # ensemble
+│   ├── tools/train.py             # to train
+│   ├── inference.py               # to inference
+│   └── ensemble.py                # to ensemble
 
 ```
 
