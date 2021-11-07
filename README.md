@@ -42,7 +42,7 @@ python tools/train.py configs/...
 | model                                | augment                              | config file                   |
 |--------------------------------------|:------------------------------------:|:-----------------------------:|
 | Upernet - BeiT (All data)            | Copy Paste, Grid Mask                |[config](https://github.com/boostcampaitech2/semantic-segmentation-level2-cv-05/blob/main/mmsegmentation/configs/upernet/upernet_beit_large_all.py)      
-| segformer - swin large               | Copy Paste, Grid Mask                |[config](https://github.com/boostcampaitech2/semantic-segmentation-level2-cv-05/blob/main/mmsegmentation/configs/segformer/segformer_swin_large.py)|
+| segformer - swin large(All data)     | Copy Paste, Grid Mask                |[config](https://github.com/boostcampaitech2/semantic-segmentation-level2-cv-05/blob/main/mmsegmentation/configs/segformer/segformer_swin_large.py)|
 | segformer - swin large (All data)    | Copy Paste, Grid Mask, Heavy aug, Mixed precision|[config](https://github.com/boostcampaitech2/semantic-segmentation-level2-cv-05/blob/main/mmsegmentation/configs/segformer/segformer_swin_large_mixed_aug_all.py)|
 
 
