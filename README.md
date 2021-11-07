@@ -9,6 +9,8 @@
   - Training Data : masking 되어있는 고유의 좌표와, 객체가 해당하는 카테고리를 포함한 2647장의 데이터
   - Validation Data : masking 되어있는 고유의 좌표와, 객체가 해당하는 카테고리를 포함한 655장의 데이터
   - Test Data : 무작위로 선정된 819장의 데이터
+    - Public (대회 진행 중) : Test Data의 50%
+    - Private (대회 종료 후) : Test Data의 50%
 - Data 분석 
   - Mislabeling 문제 : Labeling이 잘못된 데이터 문제가 있었다.
   - Class 불균형 문제 : battery와 clothing 클래스가 다른 class에 비해 현저히 적은 데이터 불균형 문제가 있었다. 
